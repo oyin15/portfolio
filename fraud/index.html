@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Card Fraud Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one analyst console column — summary strip, then trend, then where/why, then the model decision tool */
+:root {
+  --bg: #f6f7f8;
+  --panel: #ffffff;
+  --ink: #111418;
+  --ink-2: #4b525c;
+  --ink-3: #7b828c;
+  --rule: #e3e6ea;
+  --grid: #eceef1;
+  --s1: #2a78d6;      /* card-not-present / primary series */
+  --s2: #eb6834;      /* card-present / fraud emphasis */
+  --band: rgba(235,104,52,.09);
+  --good: #0f7a3d;
+  --chip: #eef3fb;
+  --font-display: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121417; --panel: #1a1d21; --ink: #f2f3f5; --ink-2: #b9bec6; --ink-3: #8a919b;
+    --rule: #2b3036; --grid: #252a2f; --s1: #3987e5; --s2: #d95926; --band: rgba(217,89,38,.14);
+    --good: #4cc27f; --chip: #1f2a38; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121417; --panel: #1a1d21; --ink: #f2f3f5; --ink-2: #b9bec6; --ink-3: #8a919b;
+  --rule: #2b3036; --grid: #252a2f; --s1: #3987e5; --s2: #d95926; --band: rgba(217,89,38,.14);
+  --good: #4cc27f; --chip: #1f2a38; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 20px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+h1 { font-family: var(--font-display); font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 0; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+.lede { color: var(--ink-2); max-width: 68ch; margin: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.chip { font-family: var(--font-data); font-size: 12px; background: var(--chip); color: var(--ink-2); padding: 3px 9px; border-radius: 999px; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 20px; display: grid; gap: 14px; min-width: 0; align-content: start; }
+.panel h2 { font-family: var(--font-display); font-size: 17px; margin: 0; font-weight: 600; }
+.panel .sub { color: var(--ink-3); font-size: 13.5px; margin: -8px 0 0; }
+.takeaway { font-size: 14px; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 12px; margin: 0; }
+.takeaway b { color: var(--ink); font-weight: 600; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; }
+.kpi { padding: 16px 18px; display: grid; gap: 2px; border-left: 1px solid var(--rule); }
+.kpi:first-child { border-left: 0; }
+.kpi .lab { font-size: 12.5px; color: var(--ink-3); }
+.kpi .val { font-family: var(--font-data); font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.kpi .note { font-size: 12.5px; color: var(--ink-2); }
+
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { font-family: var(--font-data); font-size: 11px; fill: var(--ink-3); }
+.chart .gridl { stroke: var(--grid); stroke-width: 1; }
+.chart .axis { stroke: var(--rule); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; padding: 2px; gap: 2px; width: max-content; }
+.seg button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--ink-2); padding: 5px 12px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--chip); color: var(--ink); font-weight: 600; }
+.seg button:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+
+.bars { display: grid; gap: 7px; }
+.bar { display: grid; grid-template-columns: 150px minmax(0, 1fr) 72px; align-items: center; gap: 10px; font-size: 13.5px; }
+.bar .nm { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar .tr { height: 14px; position: relative; }
+.bar .fl { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; }
+.bar .v { font-family: var(--font-data); font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.decision { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.slider { display: grid; gap: 8px; }
+.slider label { font-size: 13.5px; color: var(--ink-2); }
+.slider output { font-family: var(--font-data); font-size: 30px; font-weight: 500; }
+input[type=range] { width: 100%; accent-color: var(--s1); }
+.ticks { display: flex; justify-content: space-between; font-family: var(--font-data); font-size: 11px; color: var(--ink-3); }
+.readout { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 6px; }
+.readout div { display: grid; }
+.readout .lab { font-size: 12.5px; color: var(--ink-3); }
+.readout .val { font-family: var(--font-data); font-size: 18px; font-variant-numeric: tabular-nums; }
+.pill { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; width: max-content; }
+.pill.best { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.pill.off { background: var(--chip); color: var(--ink-2); }
+
+.models { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.models th, .models td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--rule); }
+.models th { font-weight: 500; color: var(--ink-3); font-size: 12.5px; }
+.models td.n { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
+.models th.n { text-align: right; }
+.tblwrap { overflow-x: auto; }
+
+.tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--panel); font-family: var(--font-data); font-size: 12px; padding: 7px 9px; border-radius: 6px; line-height: 1.45; z-index: 9; white-space: nowrap; }
+footer { color: var(--ink-3); font-size: 13px; max-width: 80ch; }
+ol.recs { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink-2); font-size: 14.5px; }
+ol.recs b { color: var(--ink); }
+
+@media (max-width: 820px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi:nth-child(3) { border-left: 0; }
+  .kpi:nth-child(n+3) { border-top: 1px solid var(--rule); }
+  .row2, .decision { grid-template-columns: minmax(0, 1fr); }
+  .bar { grid-template-columns: 112px minmax(0, 1fr) 64px; }
+}
+@media (prefers-reduced-motion: no-preference) { .bar .fl { transition: width .35s ease; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Case study · Payments risk</div>
+    <h1>Card Fraud Analytics &amp; Detection</h1>
+    <p class="lede">Where fraud concentrates across 120,000 card transactions, what drove a spring attack wave, and how much loss a model can prevent at a review capacity a fraud team can actually staff.</p>
+    <div class="meta">
+      <span class="chip">Oct 2025 – Sep 2026</span>
+      <span class="chip">Python · pandas · scikit-learn</span>
+      <span class="chip">Synthetic data</span>
+      <span class="chip">By Oyindamola Obisesan</span>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="Headline figures"></section>
+
+  <section class="panel">
+    <h2>Monthly fraud rate by channel</h2>
+    <p class="sub">Share of transactions confirmed as fraud, %</p>
+    <div class="legend" id="lg-month"></div>
+    <svg class="chart" id="ch-month" role="img" aria-label="Monthly fraud rate by channel"></svg>
+    <p class="takeaway"><b>Card-not-present fraud nearly doubled from April to June 2026</b>, then fell back once the wave passed. Card-present fraud stayed flat, which points to stolen credentials or bot testing, not stolen plastic.</p>
+  </section>
+
+  <div class="row2">
+    <section class="panel">
+      <h2>Fraud by merchant category</h2>
+      <div class="seg" role="group" aria-label="Metric">
+        <button type="button" id="m-loss" aria-pressed="true">Fraud $ lost</button>
+        <button type="button" id="m-rate" aria-pressed="false">Fraud rate</button>
+      </div>
+      <div class="bars" id="cats"></div>
+      <p class="takeaway"><b>Rate and dollars rank differently.</b> Gift cards have the highest rate, but Travel and Electronics carry nearly 60% of losses because tickets are large.</p>
+    </section>
+    <section class="panel">
+      <h2>Risk signals</h2>
+      <p class="sub">Fraud rate when the signal is present, as a multiple of the 1.6% baseline</p>
+      <div class="bars" id="flags"></div>
+      <p class="takeaway"><b>Velocity and new devices are the strongest single signals</b>, but each catches only a slice of fraud. Combining them is the model's job.</p>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Fraud rate by hour of day</h2>
+    <p class="sub">%, all months</p>
+    <div class="legend" id="lg-hour"></div>
+    <svg class="chart" id="ch-hour" role="img" aria-label="Fraud rate by hour of day"></svg>
+    <p class="takeaway"><b>Fraud peaks between midnight and 5am</b>, when legitimate card-not-present traffic is lowest and customers are least likely to notice an alert.</p>
+  </section>
+
+  <section class="panel">
+    <h2>How much should the team review?</h2>
+    <p class="sub">Gradient-boosting model scored on a held-out quarter (Jul–Sep 2026). Review cost $8 per alert, $5 friction per legitimate customer flagged.</p>
+    <div class="decision">
+      <div class="slider">
+        <label for="cap">Share of transactions sent to review</label>
+        <output id="cap-out">4%</output>
+        <input type="range" id="cap" min="0" max="10" step="1" value="6">
+        <div class="ticks"><span>0.25%</span><span>15%</span></div>
+        <span class="pill best" id="cap-pill">Savings-maximizing</span>
+        <div class="readout" id="readout"></div>
+      </div>
+      <div>
+        <svg class="chart" id="ch-save" role="img" aria-label="Net savings by review capacity"></svg>
+      </div>
+    </div>
+    <p class="takeaway"><b>Reviewing the top 4% of transactions catches about three-quarters of fraud dollars</b> and saves about $93K a quarter. Past that point, each extra alert costs more than the fraud it finds.</p>
+  </section>
+
+  <div class="row2">
+    <section class="panel">
+      <h2>Model comparison</h2>
+      <p class="sub">Time-based split: trained on Oct 2025–Jun 2026, tested on Jul–Sep 2026</p>
+      <div class="tblwrap"><table class="models" id="models"></table></div>
+      <p class="takeaway"><b>PR-AUC is the honest metric here.</b> With 1.4% fraud, ROC-AUC looks strong for almost any model; PR-AUC shows the boosted model is about 29× better than random at ranking alerts.</p>
+    </section>
+    <section class="panel">
+      <h2>What drives the score</h2>
+      <p class="sub">Drop in PR-AUC when each feature is shuffled</p>
+      <div class="bars" id="imp"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Recommendations</h2>
+    <ol class="recs">
+      <li><b>Deploy the model and review the top 4% of scored transactions</b> — about $370K in net savings a year at this volume.</li>
+      <li><b>Step up authentication for card-not-present purchases from new devices.</b> This is the highest-lift combination and would have blunted the spring wave.</li>
+      <li><b>Tighten limits on gift cards and digital goods for accounts under 90 days old</b>, where fraud runs 3–4× the baseline.</li>
+      <li><b>Alert on monthly card-not-present fraud rate</b> so the next wave is caught in weeks, not months.</li>
+      <li><b>Retrain quarterly</b> and track PR-AUC on the latest month to catch drift.</li>
+    </ol>
+  </section>
+
+  <footer>All transactions are simulated to mirror real fraud patterns; no customer data is used. Review and friction costs are assumptions to be replaced with an issuer's real figures. Read the <a href="notebook.html" style="color:inherit">full analysis notebook</a> · <a href="../" style="color:inherit">Back to portfolio</a></footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const D = {"kpi": {"transactions": 120000, "total_volume_usd": 10935160.35, "fraud_count": 1924, "fraud_rate_pct": 1.603, "fraud_loss_usd": 587359.35, "fraud_bps_of_volume": 537.1, "avg_fraud_ticket": 305.28, "avg_legit_ticket": 87.64}, "monthly": [{"month": "Oct 2025", "txns": 10206, "fraud": 147, "fraud_rate_pct": 1.44, "fraud_loss": 40995.09}, {"month": "Nov 2025", "txns": 9835, "fraud": 145, "fraud_rate_pct": 1.474, "fraud_loss": 45908.06}, {"month": "Dec 2025", "txns": 10056, "fraud": 131, "fraud_rate_pct": 1.303, "fraud_loss": 56606.93}, {"month": "Jan 2026", "txns": 10332, "fraud": 122, "fraud_rate_pct": 1.181, "fraud_loss": 39999.76}, {"month": "Feb 2026", "txns": 9216, "fraud": 125, "fraud_rate_pct": 1.356, "fraud_loss": 55107.76}, {"month": "Mar 2026", "txns": 10195, "fraud": 145, "fraud_rate_pct": 1.422, "fraud_loss": 41045.73}, {"month": "Apr 2026", "txns": 9933, "fraud": 219, "fraud_rate_pct": 2.205, "fraud_loss": 39163.51}, {"month": "May 2026", "txns": 10239, "fraud": 252, "fraud_rate_pct": 2.461, "fraud_loss": 70102.52}, {"month": "Jun 2026", "txns": 9788, "fraud": 210, "fraud_rate_pct": 2.145, "fraud_loss": 53810.03}, {"month": "Jul 2026", "txns": 10169, "fraud": 125, "fraud_rate_pct": 1.229, "fraud_loss": 47564.68}, {"month": "Aug 2026", "txns": 10244, "fraud": 143, "fraud_rate_pct": 1.396, "fraud_loss": 45375.6}, {"month": "Sep 2026", "txns": 9787, "fraud": 160, "fraud_rate_pct": 1.635, "fraud_loss": 51679.68}], "monthly_by_channel": [{"month": "Oct 2025", "Card-not-present": 2.671, "Card-present": 0.487}, {"month": "Nov 2025", "Card-not-present": 2.928, "Card-present": 0.311}, {"month": "Dec 2025", "Card-not-present": 2.498, "Card-present": 0.356}, {"month": "Jan 2026", "Card-not-present": 2.342, "Card-present": 0.26}, {"month": "Feb 2026", "Card-not-present": 2.628, "Card-present": 0.399}, {"month": "Mar 2026", "Card-not-present": 2.884, "Card-present": 0.295}, {"month": "Apr 2026", "Card-not-present": 4.616, "Card-present": 0.339}, {"month": "May 2026", "Card-not-present": 5.166, "Card-present": 0.396}, {"month": "Jun 2026", "Card-not-present": 4.591, "Card-present": 0.288}, {"month": "Jul 2026", "Card-not-present": 2.435, "Card-present": 0.296}, {"month": "Aug 2026", "Card-not-present": 2.786, "Card-present": 0.281}, {"month": "Sep 2026", "Card-not-present": 3.113, "Card-present": 0.474}], "categories": [{"category": "Travel & Airlines", "txns": 3611, "fraud": 228, "fraud_rate_pct": 6.314, "fraud_loss": 205724.32, "share_of_loss_pct": 35.0}, {"category": "Electronics", "txns": 6037, "fraud": 263, "fraud_rate_pct": 4.356, "fraud_loss": 132944.61, "share_of_loss_pct": 22.6}, {"category": "Jewelry & Luxury", "txns": 1185, "fraud": 65, "fraud_rate_pct": 5.485, "fraud_loss": 79595.73, "share_of_loss_pct": 13.6}, {"category": "Online Marketplace", "txns": 14315, "fraud": 552, "fraud_rate_pct": 3.856, "fraud_loss": 76510.34, "share_of_loss_pct": 13.0}, {"category": "Gift Cards", "txns": 2342, "fraud": 151, "fraud_rate_pct": 6.447, "fraud_loss": 42910.73, "share_of_loss_pct": 7.3}, {"category": "Retail - Apparel", "txns": 9479, "fraud": 107, "fraud_rate_pct": 1.129, "fraud_loss": 14920.75, "share_of_loss_pct": 2.5}, {"category": "Utilities", "txns": 3608, "fraud": 35, "fraud_rate_pct": 0.97, "fraud_loss": 7477.05, "share_of_loss_pct": 1.3}, {"category": "Grocery", "txns": 24018, "fraud": 70, "fraud_rate_pct": 0.291, "fraud_loss": 6628.06, "share_of_loss_pct": 1.1}, {"category": "Digital Goods", "txns": 7286, "fraud": 243, "fraud_rate_pct": 3.335, "fraud_loss": 6428.66, "share_of_loss_pct": 1.1}, {"category": "Gas & Fuel", "txns": 14569, "fraud": 46, "fraud_rate_pct": 0.316, "fraud_loss": 5714.56, "share_of_loss_pct": 1.0}, {"category": "Restaurants", "txns": 17955, "fraud": 57, "fraud_rate_pct": 0.317, "fraud_loss": 4358.5, "share_of_loss_pct": 0.7}, {"category": "Health & Pharmacy", "txns": 8328, "fraud": 27, "fraud_rate_pct": 0.324, "fraud_loss": 2185.03, "share_of_loss_pct": 0.4}, {"category": "Subscriptions", "txns": 7267, "fraud": 80, "fraud_rate_pct": 1.101, "fraud_loss": 1961.01, "share_of_loss_pct": 0.3}], "hourly": [{"hour": 0, "Card-not-present": 8.611, "Card-present": 0.541}, {"hour": 1, "Card-not-present": 8.723, "Card-present": 0.679}, {"hour": 2, "Card-not-present": 9.274, "Card-present": 1.524}, {"hour": 3, "Card-not-present": 9.357, "Card-present": 2.791}, {"hour": 4, "Card-not-present": 6.329, "Card-present": 2.513}, {"hour": 5, "Card-not-present": 8.654, "Card-present": 1.053}, {"hour": 6, "Card-not-present": 2.545, "Card-present": 0.637}, {"hour": 7, "Card-not-present": 2.529, "Card-present": 0.351}, {"hour": 8, "Card-not-present": 2.718, "Card-present": 0.272}, {"hour": 9, "Card-not-present": 2.205, "Card-present": 0.189}, {"hour": 10, "Card-not-present": 3.571, "Card-present": 0.2}, {"hour": 11, "Card-not-present": 2.793, "Card-present": 0.323}, {"hour": 12, "Card-not-present": 3.187, "Card-present": 0.164}, {"hour": 13, "Card-not-present": 3.147, "Card-present": 0.268}, {"hour": 14, "Card-not-present": 3.103, "Card-present": 0.391}, {"hour": 15, "Card-not-present": 3.017, "Card-present": 0.486}, {"hour": 16, "Card-not-present": 3.056, "Card-present": 0.182}, {"hour": 17, "Card-not-present": 3.082, "Card-present": 0.348}, {"hour": 18, "Card-not-present": 3.318, "Card-present": 0.478}, {"hour": 19, "Card-not-present": 3.375, "Card-present": 0.368}, {"hour": 20, "Card-not-present": 3.087, "Card-present": 0.341}, {"hour": 21, "Card-not-present": 3.214, "Card-present": 0.364}, {"hour": 22, "Card-not-present": 2.833, "Card-present": 0.368}, {"hour": 23, "Card-not-present": 2.719, "Card-present": 0.206}], "account_age": [{"band": "<30d", "fraud_rate_pct": 6.186}, {"band": "30\u201390d", "fraud_rate_pct": 5.028}, {"band": "3\u201312m", "fraud_rate_pct": 1.56}, {"band": "1\u20133y", "fraud_rate_pct": 1.56}, {"band": "3y+", "fraud_rate_pct": 1.556}], "risk_flags": [{"flag": "New device", "fraud_rate_when_true_pct": 9.888, "lift_vs_baseline": 6.167}, {"flag": "International", "fraud_rate_when_true_pct": 5.95, "lift_vs_baseline": 3.711}, {"flag": "Midnight\u20135am", "fraud_rate_when_true_pct": 4.348, "lift_vs_baseline": 2.712}, {"flag": "Account < 90 days", "fraud_rate_when_true_pct": 5.168, "lift_vs_baseline": 3.223}, {"flag": "> 500 km from home", "fraud_rate_when_true_pct": 8.209, "lift_vs_baseline": 5.12}, {"flag": "5+ txns in 24h", "fraud_rate_when_true_pct": 17.206, "lift_vs_baseline": 10.732}], "model": {"roc_auc_lr": 0.901, "pr_auc_lr": 0.318, "roc_auc_gb": 0.912, "pr_auc_gb": 0.406, "baseline_pr": 0.0142, "test_rows": 30200, "test_fraud": 428, "test_fraud_usd": 144619.96}, "threshold_curve": [{"review_pct": 0.25, "flagged": 75.0, "fraud_caught": 64.0, "recall_pct": 14.953, "precision_pct": 85.333, "fraud_usd_caught": 28276.75, "usd_recall_pct": 19.552, "net_savings_usd": 27621.75}, {"review_pct": 0.5, "flagged": 151.0, "fraud_caught": 103.0, "recall_pct": 24.065, "precision_pct": 68.212, "fraud_usd_caught": 53200.93, "usd_recall_pct": 36.787, "net_savings_usd": 51752.93}, {"review_pct": 1.0, "flagged": 302.0, "fraud_caught": 150.0, "recall_pct": 35.047, "precision_pct": 49.669, "fraud_usd_caught": 69580.35, "usd_recall_pct": 48.113, "net_savings_usd": 66404.35}, {"review_pct": 1.5, "flagged": 453.0, "fraud_caught": 183.0, "recall_pct": 42.757, "precision_pct": 40.397, "fraud_usd_caught": 76757.15, "usd_recall_pct": 53.075, "net_savings_usd": 71783.15}, {"review_pct": 2.0, "flagged": 604.0, "fraud_caught": 209.0, "recall_pct": 48.832, "precision_pct": 34.603, "fraud_usd_caught": 81759.0, "usd_recall_pct": 56.534, "net_savings_usd": 74952.0}, {"review_pct": 3.0, "flagged": 906.0, "fraud_caught": 241.0, "recall_pct": 56.308, "precision_pct": 26.6, "fraud_usd_caught": 95631.32, "usd_recall_pct": 66.126, "net_savings_usd": 85058.32}, {"review_pct": 4.0, "flagged": 1208.0, "fraud_caught": 260.0, "recall_pct": 60.748, "precision_pct": 21.523, "fraud_usd_caught": 106926.21, "usd_recall_pct": 73.936, "net_savings_usd": 92522.21}, {"review_pct": 5.0, "flagged": 1510.0, "fraud_caught": 273.0, "recall_pct": 63.785, "precision_pct": 18.079, "fraud_usd_caught": 110092.31, "usd_recall_pct": 76.125, "net_savings_usd": 91827.31}, {"review_pct": 7.5, "flagged": 2265.0, "fraud_caught": 298.0, "recall_pct": 69.626, "precision_pct": 13.157, "fraud_usd_caught": 119687.8, "usd_recall_pct": 82.76, "net_savings_usd": 91732.8}, {"review_pct": 10.0, "flagged": 3020.0, "fraud_caught": 316.0, "recall_pct": 73.832, "precision_pct": 10.464, "fraud_usd_caught": 126474.85, "usd_recall_pct": 87.453, "net_savings_usd": 88794.85}, {"review_pct": 15.0, "flagged": 4530.0, "fraud_caught": 347.0, "recall_pct": 81.075, "precision_pct": 7.66, "fraud_usd_caught": 134292.14, "usd_recall_pct": 92.859, "net_savings_usd": 77137.14}], "best": {"review_pct": 4.0, "flagged": 1208.0, "fraud_caught": 260.0, "recall_pct": 60.748, "precision_pct": 21.523, "fraud_usd_caught": 106926.21, "usd_recall_pct": 73.936, "net_savings_usd": 92522.21}, "importance": [{"feature": "distance_from_home_km", "importance": 0.2115}, {"feature": "txn_count_last_24h", "importance": 0.1318}, {"feature": "channel_Card-present", "importance": 0.1138}, {"feature": "amount_usd", "importance": 0.0899}, {"feature": "new_device", "importance": 0.0409}, {"feature": "merchant_category_Subscriptions", "importance": 0.0249}, {"feature": "is_international", "importance": 0.0244}, {"feature": "hour", "importance": 0.0178}, {"feature": "merchant_category_Restaurants", "importance": 0.0131}, {"feature": "merchant_category_Utilities", "importance": 0.0109}]};
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt$ = v => v >= 1e6 ? "$" + (v / 1e6).toFixed(2) + "M" : v >= 1e3 ? "$" + Math.round(v / 1e3) + "K" : "$" + v.toFixed(0);
+const tip = $("tip");
+function showTip(html, e) { tip.innerHTML = html; tip.hidden = false; const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; }
+function hideTip() { tip.hidden = true; }
+function el(tag, attrs, parent) { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+
+// KPIs
+const k = D.kpi;
+$("kpis").innerHTML = [
+  ["Transactions", k.transactions.toLocaleString(), fmt$(k.total_volume_usd) + " volume"],
+  ["Fraud rate", k.fraud_rate_pct.toFixed(2) + "%", k.fraud_count.toLocaleString() + " fraudulent"],
+  ["Fraud losses", fmt$(k.fraud_loss_usd), k.fraud_bps_of_volume.toFixed(0) + " bps of volume"],
+  ["Avg fraud ticket", "$" + k.avg_fraud_ticket.toFixed(0), "vs $" + k.avg_legit_ticket.toFixed(0) + " legitimate"],
+].map(([l, v, n]) => `<div class="kpi"><span class="lab">${l}</span><span class="val">${v}</span><span class="note">${n}</span></div>`).join("");
+
+// generic line chart
+function lineChart(svg, labels, series, opts = {}) {
+  const W = 1000, H = opts.h || 300, m = { t: 14, r: 26, b: 30, l: 40 };
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = "";
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const maxV = opts.max || Math.max(...series.flatMap(s => s.values));
+  const step = opts.step || 1, top = Math.ceil(maxV / step) * step;
+  const x = i => m.l + (labels.length === 1 ? 0 : i * iw / (labels.length - 1));
+  const y = v => m.t + ih - v / top * ih;
+  if (opts.band) { const [a, b] = opts.band; el("rect", { x: x(a) - 12, y: m.t, width: x(b) - x(a) + 24, height: ih, fill: "var(--band)" }, svg); }
+  for (let v = 0; v <= top + 1e-9; v += step) {
+    el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: v === 0 ? "axis" : "gridl" }, svg);
+    el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = +v.toFixed(2);
+  }
+  labels.forEach((lb, i) => { if (i % (opts.every || 1) === 0) el("text", { x: x(i), y: H - 8, "text-anchor": "middle" }, svg).textContent = lb; });
+  series.forEach(s => {
+    el("path", { d: s.values.map((v, i) => (i ? "L" : "M") + x(i) + " " + y(v)).join(""), fill: "none", stroke: s.color, "stroke-width": 2.25, "stroke-linejoin": "round" }, svg);
+    const li = s.values.length - 1;
+    el("circle", { cx: x(li), cy: y(s.values[li]), r: 4, fill: s.color, stroke: "var(--panel)", "stroke-width": 2 }, svg);
+  });
+  const cross = el("line", { y1: m.t, y2: m.t + ih, stroke: "var(--ink-3)", "stroke-dasharray": "3 3", visibility: "hidden" }, svg);
+  const dots = series.map(s => el("circle", { r: 5, fill: s.color, stroke: "var(--panel)", "stroke-width": 2, visibility: "hidden" }, svg));
+  const hit = el("rect", { x: m.l - 10, y: 0, width: iw + 20, height: H, fill: "transparent" }, svg);
+  hit.addEventListener("pointermove", e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(labels.length - 1, Math.round((px - m.l) / iw * (labels.length - 1))));
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
+    dots.forEach((d, j) => { d.setAttribute("cx", x(i)); d.setAttribute("cy", y(series[j].values[i])); d.setAttribute("visibility", "visible"); });
+    showTip(`<b>${opts.tipLabel ? opts.tipLabel(labels[i]) : labels[i]}</b><br>` + series.map(s => `${s.name}: ${s.values[i].toFixed(2)}%`).join("<br>"), e);
+  });
+  hit.addEventListener("pointerleave", () => { hideTip(); cross.setAttribute("visibility", "hidden"); dots.forEach(d => d.setAttribute("visibility", "hidden")); });
+}
+function legend(id, series) { $(id).innerHTML = series.map(s => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join(""); }
+
+function drawMonth() {
+  const mb = D.monthly_by_channel, labs = mb.map(r => r.month.replace(" 20", " ’"));
+  const s = [{ name: "Card-not-present", color: "var(--s1)", values: mb.map(r => r["Card-not-present"]) },
+             { name: "Card-present", color: "var(--s2)", values: mb.map(r => r["Card-present"]) }];
+  legend("lg-month", s);
+  lineChart($("ch-month"), labs, s, { step: 1, band: [6, 8], every: innerWidth < 600 ? 2 : 1, tipLabel: l => l.replace(" ’", " 20") });
+}
+function drawHour() {
+  const h = D.hourly, labs = h.map(r => String(r.hour).padStart(2, "0") + ":00");
+  const s = [{ name: "Card-not-present", color: "var(--s1)", values: h.map(r => r["Card-not-present"]) },
+             { name: "Card-present", color: "var(--s2)", values: h.map(r => r["Card-present"]) }];
+  legend("lg-hour", s);
+  lineChart($("ch-hour"), labs, s, { step: 2, h: 260, every: innerWidth < 600 ? 6 : 3 });
+}
+
+// horizontal bars
+function bars(id, rows, color, fmtV, tipF) {
+  const max = Math.max(...rows.map(r => r.v));
+  const box = $(id);
+  box.innerHTML = rows.map((r, i) => `<div class="bar" data-i="${i}"><span class="nm" title="${r.n}">${r.n}</span><span class="tr"><span class="fl" style="width:${(r.v / max * 100).toFixed(1)}%;background:${color}"></span></span><span class="v">${fmtV(r.v)}</span></div>`).join("");
+  box.querySelectorAll(".bar").forEach(b => {
+    const r = rows[+b.dataset.i];
+    b.addEventListener("pointermove", e => showTip(tipF(r), e)); b.addEventListener("pointerleave", hideTip);
+  });
+}
+let catMetric = "loss";
+function drawCats() {
+  const c = [...D.categories].sort((a, b) => catMetric === "loss" ? b.fraud_loss - a.fraud_loss : b.fraud_rate_pct - a.fraud_rate_pct);
+  bars("cats", c.map(r => ({ n: r.category, v: catMetric === "loss" ? r.fraud_loss : r.fraud_rate_pct, r })),
+    catMetric === "loss" ? "var(--s1)" : "var(--s2)",
+    v => catMetric === "loss" ? fmt$(v) : v.toFixed(1) + "%",
+    o => `<b>${o.n}</b><br>Fraud rate: ${o.r.fraud_rate_pct.toFixed(2)}%<br>Fraud lost: ${fmt$(o.r.fraud_loss)} (${o.r.share_of_loss_pct}% of total)<br>Transactions: ${o.r.txns.toLocaleString()}`);
+  $("m-loss").setAttribute("aria-pressed", catMetric === "loss"); $("m-rate").setAttribute("aria-pressed", catMetric === "rate");
+}
+$("m-loss").onclick = () => { catMetric = "loss"; drawCats(); };
+$("m-rate").onclick = () => { catMetric = "rate"; drawCats(); };
+
+const flags = [...D.risk_flags].sort((a, b) => b.lift_vs_baseline - a.lift_vs_baseline);
+bars("flags", flags.map(f => ({ n: f.flag, v: f.lift_vs_baseline, r: f })), "var(--s2)", v => v.toFixed(1) + "×",
+  o => `<b>${o.n}</b><br>Fraud rate when present: ${o.r.fraud_rate_when_true_pct.toFixed(1)}%<br>${o.v.toFixed(1)}× the baseline`);
+
+const nice = { distance_from_home_km: "Distance from home", txn_count_last_24h: "Txns in last 24h", "channel_Card-present": "Channel", amount_usd: "Amount", new_device: "New device",
+  log_amount: "Amount (log)", log_distance: "Distance (log)", hour: "Hour of day", is_night: "Night-time", account_age_days: "Account age", is_international: "International", customer_age: "Customer age" };
+const imp = D.importance.map(r => ({ n: nice[r.feature] || r.feature.replace("merchant_category_", "Category: ").replace("card_tier_", "Tier: "), v: r.importance }));
+bars("imp", imp, "var(--s1)", v => v.toFixed(3), o => `<b>${o.n}</b><br>PR-AUC drop: ${o.v.toFixed(3)}`);
+
+// models table
+const M = D.model;
+$("models").innerHTML = `<thead><tr><th>Model</th><th class="n">ROC-AUC</th><th class="n">PR-AUC</th><th class="n">Lift vs random</th></tr></thead><tbody>
+<tr><td>Random guess</td><td class="n">0.500</td><td class="n">${M.baseline_pr.toFixed(3)}</td><td class="n">1×</td></tr>
+<tr><td>Logistic regression</td><td class="n">${M.roc_auc_lr.toFixed(3)}</td><td class="n">${M.pr_auc_lr.toFixed(3)}</td><td class="n">${Math.round(M.pr_auc_lr / M.baseline_pr)}×</td></tr>
+<tr><td><b>Gradient boosting</b></td><td class="n"><b>${M.roc_auc_gb.toFixed(3)}</b></td><td class="n"><b>${M.pr_auc_gb.toFixed(3)}</b></td><td class="n"><b>${Math.round(M.pr_auc_gb / M.baseline_pr)}×</b></td></tr></tbody>`;
+
+// threshold tool
+const T = D.threshold_curve, bestPct = D.best.review_pct;
+const cap = $("cap"); cap.max = T.length - 1; cap.value = T.findIndex(r => r.review_pct === bestPct);
+$("ch-save").setAttribute("viewBox", "0 0 640 300");
+function drawSave(sel) {
+  const svg = $("ch-save"), W = 640, H = 300, m = { t: 16, r: 20, b: 40, l: 50 }; svg.innerHTML = "";
+  const iw = W - m.l - m.r, ih = H - m.t - m.b, xmax = 15, top = 100;
+  const x = v => m.l + v / xmax * iw, y = v => m.t + ih - v / top * ih;
+  for (let v = 0; v <= top; v += 25) { el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: v ? "gridl" : "axis" }, svg); el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = "$" + v + "K"; }
+  [0, 2.5, 5, 7.5, 10, 12.5, 15].forEach(v => el("text", { x: x(v), y: H - 20, "text-anchor": "middle" }, svg).textContent = v + "%");
+  el("text", { x: m.l + iw / 2, y: H - 3, "text-anchor": "middle" }, svg).textContent = "share of transactions reviewed";
+  el("path", { d: T.map((r, i) => (i ? "L" : "M") + x(r.review_pct) + " " + y(r.net_savings_usd / 1e3)).join(""), fill: "none", stroke: "var(--s1)", "stroke-width": 2.25 }, svg);
+  T.forEach((r, i) => {
+    const c = el("circle", { cx: x(r.review_pct), cy: y(r.net_savings_usd / 1e3), r: i === sel ? 7 : 3.5, fill: i === sel ? "var(--s2)" : "var(--s1)", stroke: "var(--panel)", "stroke-width": 2, style: "cursor:pointer" }, svg);
+    const h = el("circle", { cx: x(r.review_pct), cy: y(r.net_savings_usd / 1e3), r: 14, fill: "transparent", style: "cursor:pointer" }, svg);
+    h.addEventListener("pointermove", e => showTip(`<b>Review ${r.review_pct}%</b><br>Net savings: ${fmt$(r.net_savings_usd)}`, e));
+    h.addEventListener("pointerleave", hideTip);
+    h.addEventListener("click", () => { cap.value = i; update(); });
+  });
+  const s = T[sel];
+  el("text", { x: Math.min(x(s.review_pct) + 10, W - 120), y: y(s.net_savings_usd / 1e3) - 12, fill: "var(--ink)", style: "fill:var(--ink)" }, svg).textContent = fmt$(s.net_savings_usd) + " net";
+}
+function update() {
+  const i = +cap.value, r = T[i];
+  $("cap-out").textContent = r.review_pct + "%";
+  const isBest = r.review_pct === bestPct;
+  $("cap-pill").className = "pill " + (isBest ? "best" : "off");
+  $("cap-pill").textContent = isBest ? "Savings-maximizing" : (r.review_pct < bestPct ? "Under-reviewing" : "Over-reviewing");
+  $("readout").innerHTML = [
+    ["Alerts this quarter", Math.round(r.flagged).toLocaleString()],
+    ["Fraud cases caught", Math.round(r.fraud_caught) + " of " + M.test_fraud],
+    ["Fraud $ caught", r.usd_recall_pct.toFixed(0) + "%"],
+    ["Alert precision", r.precision_pct.toFixed(0) + "%"],
+    ["Net savings", fmt$(r.net_savings_usd)],
+    ["Annualized", fmt$(r.net_savings_usd * 4)],
+  ].map(([l, v]) => `<div><span class="lab">${l}</span><span class="val">${v}</span></div>`).join("");
+  cap.setAttribute("aria-valuetext", r.review_pct + " percent reviewed");
+  drawSave(i);
+}
+cap.addEventListener("input", update);
+
+function drawAll() { drawMonth(); drawHour(); }
+drawAll(); drawCats(); update();
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
+</script>
+
+</body>
+</html>

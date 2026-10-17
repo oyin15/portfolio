@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oyindamola Obisesan · Data Science Portfolio</title>
+<meta name="description" content="Data science and analytics case studies by Oyindamola Obisesan: fraud detection and e-commerce customer analytics.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #f6f7f8; --panel: #ffffff; --ink: #111418; --ink-2: #4b525c; --ink-3: #7b828c;
+  --rule: #e3e6ea; --accent: #2a78d6; --chip: #eef1f4;
+  --sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121417; --panel: #1a1d21; --ink: #f2f3f5; --ink-2: #b9bec6; --ink-3: #8a919b;
+          --rule: #2b3036; --accent: #5a9ff0; --chip: #22272d; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 56px 64px; display: grid; gap: 40px; }
+header { display: grid; gap: 10px; max-width: 64ch; }
+.tag { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); letter-spacing: .05em; text-transform: uppercase; }
+h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.1; margin: 0; letter-spacing: -.02em; }
+.lede { margin: 0; color: var(--ink-2); font-size: 17px; }
+.skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.skills span { font-family: var(--mono); font-size: 12.5px; background: var(--chip); color: var(--ink-2); padding: 4px 10px; border-radius: 6px; }
+h2 { font-size: 13px; font-family: var(--mono); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin: 0 0 -16px; }
+.projects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+.card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-bottom: 1px solid var(--rule); }
+.body { padding: 20px; display: grid; gap: 10px; align-content: start; }
+.card h3 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.card ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14.5px; display: grid; gap: 4px; }
+.links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.links a { font-size: 14px; font-weight: 600; text-decoration: none; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--rule); color: var(--ink); }
+.links a.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.links a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.about { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 24px; display: grid; gap: 10px; max-width: 72ch; }
+.about p { margin: 0; color: var(--ink-2); }
+footer { color: var(--ink-3); font-size: 13.5px; }
+@media (max-width: 760px) { .projects { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="tag">Data science &amp; analytics portfolio</div>
+    <h1>Oyindamola Obisesan</h1>
+    <p class="lede">Machine learning engineer with a background in real-time fraud detection at Visa. I turn business data into dashboards, clear findings and decisions tied to dollars.</p>
+    <div class="skills"><span>Python</span><span>SQL</span><span>pandas</span><span>scikit-learn</span><span>Dashboards</span><span>Customer analytics</span><span>Fraud &amp; risk</span><span>A/B testing</span></div>
+  </header>
+
+  <h2>Case studies</h2>
+  <section class="projects">
+    <article class="card">
+      <img src="sales/cover.png" alt="Sales dashboard showing FY26 revenue of $887K and a monthly revenue chart">
+      <div class="body">
+        <h3>E-commerce Sales &amp; Customer Review</h3>
+        <p>Two-year review of an online home goods store: 18,000 orders and 12,000 customers.</p>
+        <ul>
+          <li>Found that the largest ad channel brought customers worth 40% less</li>
+          <li>Identified repeat buyers holding 26% of revenue for a win-back campaign</li>
+          <li>Showed 25% discounts cut margin by 13 points without improving loyalty</li>
+        </ul>
+        <div class="links">
+          <a class="primary" href="sales/">Open dashboard</a>
+          <a href="sales/report.pdf">Read report (PDF)</a>
+          <a href="sales/notebook.html">Notebook</a>
+        </div>
+      </div>
+    </article>
+    <article class="card">
+      <img src="fraud/cover.png" alt="Fraud dashboard showing a spike in card-not-present fraud from April to June 2026">
+      <div class="body">
+        <h3>Card Fraud Analytics &amp; Detection</h3>
+        <p>Fraud analysis and detection model on 120,000 card transactions.</p>
+        <ul>
+          <li>Traced a spring fraud spike to card-not-present attacks</li>
+          <li>Built a model that ranks fraud 29× better than random</li>
+          <li>Chose a review level that catches 74% of fraud dollars, about $370K a year in savings</li>
+        </ul>
+        <div class="links">
+          <a class="primary" href="fraud/">Open dashboard</a>
+          <a href="fraud/notebook.html">Notebook</a>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="about">
+    <h3 style="margin:0">Working with me</h3>
+    <p>Send me your question and your data, from a spreadsheet to a database export. You get a clear answer, a dashboard your team can use, and documented code you can rerun. I'm available part-time for dashboards, customer and sales analysis, fraud and risk analytics, and predictive models.</p>
+  </section>
+
+  <footer>Both case studies use simulated data built to mirror real business patterns; no client data is shown.</footer>
+</div>
+</body>
+</html>
